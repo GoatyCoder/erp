@@ -184,3 +184,12 @@ Nel MVP corrente il deploy è scaffold-first. Quando colleghi Prisma runtime:
 2. esegui una one-off job su Render dopo ogni migration.
 
 Suggerimento: per semplicità iniziale puoi fare deploy senza migrazioni automatiche, poi abilitarle in Phase 2.
+
+
+### 7) Troubleshooting rapido (Render)
+- Errore `Cannot find module /app/apps/api/dist/main.js`:
+  - assicurati di usare il `Dockerfile` aggiornato di questo repo (entrypoint: `node apps/api/dist/apps/api/src/main.js`).
+- Se l'homepage è bianca o 404:
+  - verifica che il build web venga copiato in `apps/api/public` durante la build docker.
+- Se le API rispondono 401:
+  - aggiungi header `x-tenant-id` per tutti gli endpoint business (eccetto `/auth/*` e `/api/health`).
