@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LotType { inbound finished }
+enum HoldStatus { ON_HOLD RELEASED }
+enum ShipmentStatus { PLANNED DISPATCHED }
+
+enum OutboxStatus { PENDING PROCESSED ERROR }
+
+model Tenant {
+  id            String         @id @default(cuid())
+  name          String
+  users         User[]
+  moduleConfigs ModuleConfig[]
+  createdAt     DateTime       @default(now())
+}
+
+model User {
+  id           String     @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  userRoles    UserRole[]
+  @@unique([tenantId, email])
+}
+
+model Role {
+  id       String     @id @default(cuid())
+  tenantId String
+  code     String
+  users    UserRole[]
+  @@unique([tenantId, code])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+  @@id([userId, roleId])
+}
+
+model ModuleConfig {
+  id         String  @id @default(cuid())
+  tenantId   String
+  moduleCode String
+  enabled    Boolean @default(true)
+  tenant     Tenant  @relation(fields: [tenantId], references: [id])
+  @@unique([tenantId, moduleCode])
+}
+
+model Party { id String @id @default(cuid()) tenantId String type String name String vat String? @@index([tenantId]) }
+model Site { id String @id @default(cuid()) tenantId String name String @@index([tenantId]) }
+model Line { id String @id @default(cuid()) tenantId String siteId String name String @@index([tenantId, siteId]) }
+model Product { id String @id @default(cuid()) tenantId String name String gtin String? category String? @@index([tenantId]) }
+model PackSpec { id String @id @default(cuid()) tenantId String productId String description String netWeightKg Float? @@index([tenantId, productId]) }
+
+model Lot {
+  id         String   @id @default(cuid())
+  tenantId   String
+  lotCode    String
+  type       LotType
+  productId  String?
+  partyId    String?
+  attributes Json?
+  status     String
+  @@unique([tenantId, lotCode])
+}
+
+model HandlingUnit { id String @id @default(cuid()) tenantId String huCode String lotId String packSpecId String qtyUnits Int netKg Float? @@unique([tenantId, huCode]) }
+model Pallet { id String @id @default(cuid()) tenantId String sscc String status String @@unique([tenantId, sscc]) }
+model PalletItem { id String @id @default(cuid()) tenantId String palletId String handlingUnitId String @@unique([tenantId, palletId, handlingUnitId]) }
+model Shipment { id String @id @default(cuid()) tenantId String customerPartyId String siteId String plannedAt DateTime dispatchedAt DateTime? docNo String? status ShipmentStatus @default(PLANNED) }
+model ShipmentPallet { id String @id @default(cuid()) tenantId String shipmentId String palletId String @@unique([tenantId, shipmentId, palletId]) }
+model Attachment { id String @id @default(cuid()) tenantId String ownerType String ownerId String filename String mime String storageKey String }
+model AuditLog { id String @id @default(cuid()) tenantId String actorUserId String action String entityType String entityId String before Json? after Json? reason String? at DateTime @default(now()) @@index([tenantId, entityType, entityId]) }
+model OutboxMessage { id String @id @default(cuid()) tenantId String type String payload Json status OutboxStatus @default(PENDING) createdAt DateTime @default(now()) processedAt DateTime? @@index([tenantId, status, createdAt]) }
+model TraceabilityReadModel { id String @id @default(cuid()) tenantId String lotCode String shipmentId String palletSscc String? eventAt DateTime @default(now()) @@index([tenantId, lotCode]) @@index([tenantId, shipmentId]) }

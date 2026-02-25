@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: erp-packhouse
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FILES_ROOT
+        value: /var/data/storage
+      - key: DATABASE_URL
+        sync: false
