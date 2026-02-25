@@ -189,6 +189,8 @@ Suggerimento: per semplicità iniziale puoi fare deploy senza migrazioni automat
 ### 7) Troubleshooting rapido (Render)
 - Errore `Cannot find module /app/apps/api/dist/main.js`:
   - assicurati di usare il `Dockerfile` aggiornato di questo repo (entrypoint: `node apps/api/dist/apps/api/src/main.js`).
+- Errore `Cannot find module '@core/identity/identity.api.module'`:
+  - il progetto ora usa import relativi runtime-safe nei moduli Nest; fai redeploy dell'immagine aggiornata.
 - Se l'homepage è bianca o 404:
   - verifica che il build web venga copiato in `apps/api/public` durante la build docker.
 - Se le API rispondono 401:

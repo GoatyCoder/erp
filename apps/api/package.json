@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start:dev": "ts-node src/main.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
     "test": "echo 'API scaffold checks passed'"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4",
     "@types/express": "^4.17.21",
-    "@types/node": "^20.16.5"
+    "@types/node": "^20.16.5",
+    "tsc-alias": "^1.8.10"
   }
 }

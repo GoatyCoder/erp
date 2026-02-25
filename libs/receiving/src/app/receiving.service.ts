@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { AuditService } from '@core/audit/audit.service';
-import { OutboxService } from '@core/db/outbox.service';
-import { TransactionService } from '@core/db/transaction.service';
+import { AuditService } from '../../../core/src/audit/audit.service';
+import { OutboxService } from '../../../core/src/db/outbox.service';
+import { TransactionService } from '../../../core/src/db/transaction.service';
 
 @Injectable()
 export class ReceivingService {

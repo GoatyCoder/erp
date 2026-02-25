@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ReportingApiModule } from '@reporting/api/reporting.api.module';
+import { ReportingApiModule } from '../../../../libs/reporting/src/api/reporting.api.module';
 
 @Module({ imports: [ReportingApiModule] })
 export class ReportingModule {}

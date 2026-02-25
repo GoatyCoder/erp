@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ReceivingApiModule } from '@receiving/api/receiving.api.module';
+import { ReceivingApiModule } from '../../../../libs/receiving/src/api/receiving.api.module';
 
 @Module({ imports: [ReceivingApiModule] })
 export class ReceivingModule {}
