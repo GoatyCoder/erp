@@ -5,7 +5,10 @@ export interface DemoLot {
   tenantId: string;
   lotCode: string;
   productId?: string;
+  grossKg?: number;
+  tareKg?: number;
   netKg?: number;
+  weighedAt?: string;
   status: 'RECEIVED' | 'ON_HOLD' | 'RELEASED' | 'CONSUMED' | 'SHIPPED';
 }
 

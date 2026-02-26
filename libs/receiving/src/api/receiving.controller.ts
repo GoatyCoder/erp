@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { ReceivingService } from '../app/receiving.service';
 import { DemoStoreService } from '../../../core/src/shared/demo-store.service';
@@ -35,10 +35,27 @@ export class ReceivingController {
   }
 
   @Post('weights')
-  recordWeight(@Body() dto: RecordWeightDto) {
-    const netKg = dto.grossKg - (dto.tareKg ?? 0);
+  async recordWeight(@Body() dto: RecordWeightDto) {
+    const tareKg = dto.tareKg ?? 0;
+    if (dto.grossKg <= 0) {
+      throw new BadRequestException('grossKg must be greater than zero');
+    }
+    if (tareKg < 0) {
+      throw new BadRequestException('tareKg cannot be negative');
+    }
+    if (tareKg > dto.grossKg) {
+      throw new BadRequestException('tareKg cannot be greater than grossKg');
+    }
+
+    const weightRecord = await this.service.recordInboundWeight({ ...dto, tareKg });
     const lot = this.store.lots.find((x) => x.id === dto.lotId && x.tenantId === dto.tenantId);
-    if (lot) lot.netKg = netKg;
-    return { ...dto, netKg };
+    if (lot) {
+      lot.grossKg = weightRecord.grossKg;
+      lot.tareKg = weightRecord.tareKg;
+      lot.netKg = weightRecord.netKg;
+      lot.weighedAt = weightRecord.weighedAt;
+    }
+
+    return weightRecord;
   }
 }

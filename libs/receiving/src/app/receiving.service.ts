@@ -30,4 +30,36 @@ export class ReceivingService {
       return lot;
     });
   }
+
+  async recordInboundWeight(command: {
+    tenantId: string;
+    actorUserId: string;
+    lotId: string;
+    grossKg: number;
+    tareKg?: number;
+  }) {
+    return this.tx.runInTransaction(async () => {
+      const tareKg = command.tareKg ?? 0;
+      const netKg = command.grossKg - tareKg;
+      const weighedAt = new Date().toISOString();
+      const weightRecord = { ...command, tareKg, netKg, weighedAt };
+
+      await this.audit.log({
+        tenantId: command.tenantId,
+        actorUserId: command.actorUserId,
+        action: 'RecordInboundWeightCommand',
+        entityType: 'lot',
+        entityId: command.lotId,
+        after: weightRecord
+      });
+
+      await this.outbox.enqueue({
+        tenantId: command.tenantId,
+        type: 'receiving.weight.recorded',
+        payload: weightRecord
+      });
+
+      return weightRecord;
+    });
+  }
 }
