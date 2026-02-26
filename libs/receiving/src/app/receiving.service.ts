@@ -35,6 +35,7 @@ export class ReceivingService {
     tenantId: string;
     actorUserId: string;
     lotId: string;
+    palletCode: string;
     grossKg: number;
     tareKg?: number;
   }) {

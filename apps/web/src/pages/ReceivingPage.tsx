@@ -1,19 +1,42 @@
 import { CSSProperties, FormEvent, useMemo, useState } from 'react';
 import { apiGet, apiPost } from '../api/client';
 
+interface InboundLot {
+  id: string;
+  lotCode: string;
+  status: string;
+  grossKg?: number;
+  tareKg?: number;
+  netKg?: number;
+  palletCount?: number;
+}
+
+interface InboundPalletWeight {
+  id: string;
+  lotId: string;
+  palletCode: string;
+  grossKg: number;
+  tareKg: number;
+  netKg: number;
+  weighedAt: string;
+}
+
 export function ReceivingPage() {
   const [lotCode, setLotCode] = useState('ING-2026-0001');
   const [weightLotId, setWeightLotId] = useState('');
+  const [palletCode, setPalletCode] = useState('');
   const [grossKg, setGrossKg] = useState('');
   const [tareKg, setTareKg] = useState('0');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [lastLot, setLastLot] = useState<any>(null);
   const [lastWeight, setLastWeight] = useState<any>(null);
-  const [lots, setLots] = useState<any[]>([]);
+  const [lots, setLots] = useState<InboundLot[]>([]);
+  const [weights, setWeights] = useState<InboundPalletWeight[]>([]);
 
   const parsedGrossKg = Number(grossKg || 0);
   const parsedTareKg = Number(tareKg || 0);
+  const selectedLot = useMemo(() => lots.find((x) => x.id === weightLotId), [lots, weightLotId]);
   const netPreview = useMemo(() => {
     if (!Number.isFinite(parsedGrossKg) || !Number.isFinite(parsedTareKg)) return null;
     if (parsedGrossKg <= 0 || parsedTareKg < 0 || parsedTareKg > parsedGrossKg) return null;
@@ -27,13 +50,30 @@ export function ReceivingPage() {
     const lot = await apiPost('/receiving/inbound-lots', { tenantId: 'tenant_demo', actorUserId: 'user_1', lotCode });
     setLastLot(lot);
     setWeightLotId(lot.id);
+    setPalletCode('PED-1');
     setSuccess(`Lotto ${lot.lotCode} creato correttamente.`);
     await refreshLots();
+    await refreshWeights(lot.id);
   };
 
   const refreshLots = async () => {
-    const data = await apiGet<any[]>('/receiving/inbound-lots?tenantId=tenant_demo');
+    const data = await apiGet<InboundLot[]>('/receiving/inbound-lots?tenantId=tenant_demo');
     setLots(data);
+  };
+
+  const refreshWeights = async (lotId: string) => {
+    if (!lotId) {
+      setWeights([]);
+      return;
+    }
+    const data = await apiGet<InboundPalletWeight[]>(`/receiving/weights?tenantId=tenant_demo&lotId=${encodeURIComponent(lotId)}`);
+    setWeights(data);
+  };
+
+  const selectLotForWeight = async (lot: InboundLot) => {
+    setWeightLotId(lot.id);
+    setPalletCode(`PED-${(lot.palletCount ?? 0) + 1}`);
+    await refreshWeights(lot.id);
   };
 
   const recordWeight = async (e: FormEvent) => {
@@ -56,70 +96,79 @@ export function ReceivingPage() {
       return;
     }
 
+    const normalizedPalletCode = palletCode.trim();
     const weight = await apiPost('/receiving/weights', {
       tenantId: 'tenant_demo',
       actorUserId: 'user_1',
       lotId: weightLotId,
+      palletCode: normalizedPalletCode || undefined,
       grossKg: parsedGrossKg,
       tareKg: parsedTareKg
     });
 
     setLastWeight(weight);
-    setSuccess(`Pesatura registrata per ${weightLotId}: netto ${weight.netKg.toFixed(2)} kg.`);
+    setSuccess(`Pesatura registrata su pedana ${weight.palletCode}: netto ${weight.netKg.toFixed(2)} kg.`);
     setGrossKg('');
     setTareKg('0');
+    setPalletCode(`PED-${(weight.lotTotals?.palletCount ?? 0) + 1}`);
     await refreshLots();
+    await refreshWeights(weightLotId);
   };
 
   return (
     <section style={{ marginTop: 16, display: 'grid', gap: 16 }}>
       <header>
         <h2 style={{ marginBottom: 4 }}>Ricezione merce</h2>
-        <p style={{ margin: 0, color: '#566176' }}>Gestione rapida dei lotti in ingresso e registrazione pesatura per gli addetti di magazzino.</p>
+        <p style={{ margin: 0, color: '#566176' }}>Gestione multi-pedana per lotto: registra più pesature in ingresso mantenendo i totali aggregati.</p>
       </header>
 
       {error && <div style={{ background: '#fdecef', color: '#9b1c31', padding: 12, borderRadius: 10 }}>{error}</div>}
       {success && <div style={{ background: '#ebf8f1', color: '#0f6a43', padding: 12, borderRadius: 10 }}>{success}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-        <form onSubmit={createLot} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
+        <form onSubmit={createLot} style={cardStyle}>
           <h3 style={{ margin: 0 }}>Nuovo lotto in ingresso</h3>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 13, color: '#334155' }}>Codice lotto</span>
+          <label style={labelStyle}>
+            <span style={labelCaptionStyle}>Codice lotto</span>
             <input value={lotCode} onChange={(e) => setLotCode(e.target.value)} placeholder="es. ING-2026-0001" style={inputStyle} required />
           </label>
           <button type="submit" style={primaryButtonStyle}>Crea lotto ingresso</button>
         </form>
 
-        <form onSubmit={recordWeight} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
+        <form onSubmit={recordWeight} style={cardStyle}>
           <h3 style={{ margin: 0 }}>Pesatura merce in ingresso</h3>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 13, color: '#334155' }}>ID lotto</span>
+          <label style={labelStyle}>
+            <span style={labelCaptionStyle}>ID lotto</span>
             <input value={weightLotId} onChange={(e) => setWeightLotId(e.target.value)} placeholder="Seleziona dal prospetto o digita ID" style={inputStyle} required />
+          </label>
+          <label style={labelStyle}>
+            <span style={labelCaptionStyle}>Codice pedana</span>
+            <input value={palletCode} onChange={(e) => setPalletCode(e.target.value)} placeholder="es. PED-1 (vuoto = auto)" style={inputStyle} />
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 13, color: '#334155' }}>Peso lordo (kg)</span>
+            <label style={labelStyle}>
+              <span style={labelCaptionStyle}>Peso lordo (kg)</span>
               <input value={grossKg} onChange={(e) => setGrossKg(e.target.value)} type="number" step="0.01" min="0" style={inputStyle} required />
             </label>
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 13, color: '#334155' }}>Tara (kg)</span>
+            <label style={labelStyle}>
+              <span style={labelCaptionStyle}>Tara (kg)</span>
               <input value={tareKg} onChange={(e) => setTareKg(e.target.value)} type="number" step="0.01" min="0" style={inputStyle} required />
             </label>
           </div>
 
           <div style={{ background: '#f8fafc', borderRadius: 10, padding: 10, fontSize: 14 }}>
-            Netto calcolato: <strong>{netPreview ? `${netPreview} kg` : '—'}</strong>
+            Netto pedana: <strong>{netPreview ? `${netPreview} kg` : '—'}</strong>
+            {selectedLot && <span style={{ color: '#64748b' }}> · Totale lotto attuale: {selectedLot.netKg != null ? `${selectedLot.netKg.toFixed(2)} kg` : '—'}</span>}
           </div>
 
-          <button type="submit" style={primaryButtonStyle}>Registra pesatura</button>
+          <button type="submit" style={primaryButtonStyle}>Registra pesatura pedana</button>
         </form>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
+      <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>Lotti ingresso</h3>
+          <h3 style={{ margin: 0 }}>Lotti ingresso (totali aggregati)</h3>
           <button onClick={refreshLots} style={secondaryButtonStyle}>Aggiorna elenco</button>
         </div>
 
@@ -131,10 +180,10 @@ export function ReceivingPage() {
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
                   <th style={thStyle}>Lotto</th>
-                  <th style={thStyle}>Stato</th>
-                  <th style={thStyle}>Lordo</th>
-                  <th style={thStyle}>Tara</th>
-                  <th style={thStyle}>Netto</th>
+                  <th style={thStyle}>Pedane</th>
+                  <th style={thStyle}>Lordo tot.</th>
+                  <th style={thStyle}>Tara tot.</th>
+                  <th style={thStyle}>Netto tot.</th>
                   <th style={thStyle}>Azione</th>
                 </tr>
               </thead>
@@ -142,11 +191,45 @@ export function ReceivingPage() {
                 {lots.map((lot) => (
                   <tr key={lot.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={tdStyle}><strong>{lot.lotCode}</strong><br /><span style={{ color: '#64748b', fontSize: 12 }}>{lot.id}</span></td>
-                    <td style={tdStyle}><span style={badgeStyle}>{lot.status}</span></td>
+                    <td style={tdStyle}><span style={badgeStyle}>{lot.palletCount ?? 0}</span></td>
                     <td style={tdStyle}>{lot.grossKg != null ? `${Number(lot.grossKg).toFixed(2)} kg` : '—'}</td>
                     <td style={tdStyle}>{lot.tareKg != null ? `${Number(lot.tareKg).toFixed(2)} kg` : '—'}</td>
                     <td style={tdStyle}>{lot.netKg != null ? `${Number(lot.netKg).toFixed(2)} kg` : '—'}</td>
-                    <td style={tdStyle}><button onClick={() => setWeightLotId(lot.id)} style={secondaryButtonStyle}>Seleziona</button></td>
+                    <td style={tdStyle}><button onClick={() => selectLotForWeight(lot)} style={secondaryButtonStyle}>Seleziona</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div style={cardStyle}>
+        <h3 style={{ marginTop: 0 }}>Dettaglio pedane lotto selezionato</h3>
+        {!weightLotId ? (
+          <p style={{ margin: 0, color: '#64748b' }}>Seleziona un lotto per vedere le pedane registrate.</p>
+        ) : weights.length === 0 ? (
+          <p style={{ margin: 0, color: '#64748b' }}>Nessuna pedana registrata per questo lotto.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                  <th style={thStyle}>Pedana</th>
+                  <th style={thStyle}>Lordo</th>
+                  <th style={thStyle}>Tara</th>
+                  <th style={thStyle}>Netto</th>
+                  <th style={thStyle}>Pesata il</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weights.map((x) => (
+                  <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={tdStyle}><strong>{x.palletCode}</strong></td>
+                    <td style={tdStyle}>{x.grossKg.toFixed(2)} kg</td>
+                    <td style={tdStyle}>{x.tareKg.toFixed(2)} kg</td>
+                    <td style={tdStyle}>{x.netKg.toFixed(2)} kg</td>
+                    <td style={tdStyle}>{new Date(x.weighedAt).toLocaleString('it-IT')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -165,6 +248,25 @@ export function ReceivingPage() {
     </section>
   );
 }
+
+const cardStyle: CSSProperties = {
+  background: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 12,
+  padding: 16,
+  display: 'grid',
+  gap: 10
+};
+
+const labelStyle: CSSProperties = {
+  display: 'grid',
+  gap: 6
+};
+
+const labelCaptionStyle: CSSProperties = {
+  fontSize: 13,
+  color: '#334155'
+};
 
 const inputStyle: CSSProperties = {
   border: '1px solid #cbd5e1',
