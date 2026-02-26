@@ -8,10 +8,12 @@ import { InventoryModule } from './modules/inventory.module';
 import { ShippingModule } from './modules/shipping.module';
 import { ReportingModule } from './modules/reporting.module';
 import { HealthController } from './health.controller';
+import { PlatformModule } from './modules/platform.module';
 
 @Module({
   controllers: [HealthController],
   imports: [
+    PlatformModule,
     CoreModule,
     ReceivingModule,
     QualityModule,

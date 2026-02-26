@@ -195,3 +195,12 @@ Suggerimento: per semplicità iniziale puoi fare deploy senza migrazioni automat
   - verifica che il build web venga copiato in `apps/api/public` durante la build docker.
 - Se le API rispondono 401:
   - aggiungi header `x-tenant-id` per tutti gli endpoint business (eccetto `/auth/*` e `/api/health`).
+
+
+## Demo funzionale rapida (2 minuti)
+1. Apri pagina **Ricezione** e crea un lotto (es. `ING-2026-0001`).
+2. Clicca **Aggiorna elenco lotti** e copia l'id lotto (`lot-...`).
+3. Vai in **QC** e usa quell'id per fare Hold/Release.
+4. Vai in **Tracciabilità** e prova `Trace Forward` con il lot code.
+
+Nota: per MVP lo stato è in-memory (demo), quindi si resetta al riavvio del servizio.
