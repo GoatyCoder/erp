@@ -1,0 +1,2 @@
+-- Initial MVP schema generated from prisma/schema.prisma
+-- Use `prisma migrate dev` to regenerate SQL in real environments.
